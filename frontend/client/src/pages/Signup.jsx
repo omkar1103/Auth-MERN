@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ToastContainer } from 'react-toastify'
-import { handleError } from '../Utils'
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { handleError, handleSuccess } from '../Utils';
 
 const Signup = () => {
   const [signupInfo, setSignupInfo] = useState({
@@ -10,14 +11,14 @@ const Signup = () => {
     password: ''
   });
 
+  const navigate = useNavigate();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const copySignInfo = { ...signupInfo };
-    copySignInfo[name] = value;
-    setSignupInfo(copySignInfo);
+    setSignupInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
     const { name, email, password } = signupInfo;
 
@@ -25,8 +26,40 @@ const Signup = () => {
       return handleError('All fields are required');
     }
 
-    // Perform actual signup logic here...
-    console.log('Signed up with:', signupInfo);
+    try {
+      const url = 'http://localhost:8080/auth/signup';
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, email, password })
+      });
+
+      const result = await response.json();
+      const { success, message, error} = result;
+
+      if (success) {
+        handleSuccess(message || 'Signup successful!');
+        setSignupInfo({ name: '', email: '', password: '' }); // clear form
+        setTimeout(() => {
+          navigate('/login');
+        }, 1000);
+      } 
+      else if(error){
+        const details=error?.details[0].message;
+        handleError(details);
+      }
+      else if(!success){
+        handleError(message);
+      }
+      else {
+        handleError(message || 'Signup failed');
+      }
+
+    } catch (err) {
+      handleError(err.message || 'Something went wrong');
+    }
   };
 
   return (
@@ -65,9 +98,9 @@ const Signup = () => {
           />
         </div>
         <button type='submit'>Signup</button>
-        <span>
+        <p style={{ marginTop: '10px' }}>
           Already have an account? <Link to='/login'>Login</Link>
-        </span>
+        </p>
       </form>
       <ToastContainer />
     </div>
